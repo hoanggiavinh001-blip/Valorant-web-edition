@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>VALORANT STRIKE • TEAM BALANCE + SPECTATOR</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-user-select: none;
+      user-select: none;
+      margin: 0;
+      padding: 0;
+      touch-action: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0a0f1c;
+      font-family: 'Segoe UI', 'Tahoma', sans-serif;
+      color: #fff;
+    }
+    #game-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    #hud-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .interactive {
+      pointer-events: auto;
+    }
+
+    /* Spectator info */
+    #spectator-info {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 18px;
+      color: #f0b34b;
+      display: none;
+      text-align: center;
+      border: 1px solid #f0b34b;
+    }
+
+    #top-match-bar {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      background: rgba(8, 12, 24, 0.92);
+      border: 2px solid rgba(255, 70, 85, 0.8);
+      padding: 10px 34px;
+      border-radius: 40px;
+      font-weight: bold;
+      font-size: 22px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    }
+    .team-blue {
+      color: #3ce0f0;
+      text-shadow: 0 0 16px #00c8ff;
+    }
+    .team-red {
+      color: #ff4655;
+      text-shadow: 0 0 16px #ff0033;
+    }
+    #headshot-banner {
+      position: absolute;
+      top: 28%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 42px;
+      font-weight: 900;
+      color: #ffd966;
+      text-shadow: 0 0 25px #ff5500;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      letter-spacing: 3px;
+    }
+    #crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    #crosshair-dot {
+      width: 6px;
+      height: 6px;
+      background: #f0e68c;
+      border-radius: 50%;
+      box-shadow: 0 0 14px #ffb347, 0 0 24px #ff5500;
+    }
+    #minimap {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      width: 140px;
+      height: 140px;
+      background: rgba(10, 18, 30, 0.92);
+      border: 2px solid #f0b34b;
+      border-radius: 50%;
+      backdrop-filter: blur(6px);
+    }
+    #vital-stats {
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      font-weight: bold;
+      font-size: 20px;
+      text-shadow: 0 4px 8px rgba(0,0,0,0.9);
+    }
+    #ammo-display {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      font-size: 38px;
+      font-weight: 900;
+      color: #f5e56c;
+      text-shadow: 0 0 18px #ffaa33;
+    }
+    #kill-feed {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 14px;
+      font-weight: bold;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .feed-item {
+      background: rgba(12, 17, 29, 0.92);
+      padding: 8px 16px;
+      border-radius: 8px;
+      border-left: 5px solid #ff4655;
+      backdrop-filter: blur(8px);
+    }
+    #victory-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(8, 12, 26, 0.97);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      color: #f3c969;
+      font-size: 44px;
+      font-weight: 900;
+      backdrop-filter: blur(10px);
+    }
+    #buy-menu {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 340px;
+      background: rgba(15, 20, 30, 0.96);
+      border: 2px solid #ffb74d;
+      border-radius: 20px;
+      padding: 24px;
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      z-index: 100;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 0 45px rgba(255,165,0,0.35);
+    }
+    .buy-item {
+      background: rgba(255,255,255,0.08);
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,200,100,0.5);
+      cursor: pointer;
+      text-align: center;
+      font-weight: bold;
+      color: #f5e6d3;
+    }
+    .buy-item:hover {
+      background: #ff8933;
+      color: #000;
+      border-color: #fff;
+    }
+
+    /* Spectator controls */
+    #spectator-controls {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      gap: 15px;
+      z-index: 150;
+    }
+    .spec-btn {
+      background: rgba(15, 23, 42, 0.9);
+      border: 2px solid #f0b34b;
+      color: #f0b34b;
+      padding: 10px 20px;
+      border-radius: 25px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .spec-btn:active {
+      background: #f0b34b;
+      color: #000;
+    }
+
+    #joystick-zone {
+      position: absolute;
+      bottom: 40px;
+      left: 40px;
+      width: 150px;
+      height: 150px;
+      background: rgba(255,255,240,0.12);
+      border-radius: 50%;
+      border: 2px solid rgba(255,220,150,0.6);
+    }
+    #joystick-knob {
+      position: absolute;
+      top: 50px;
+      left: 50px;
+      width: 50px;
+      height: 50px;
+      background: #f5b042;
+      border-radius: 50%;
+      box-shadow: 0 0 20px #f90;
+    }
+    .btn-action {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(18, 22, 35, 0.92);
+      border: 2px solid #f5b042;
+      color: #fff;
+      border-radius: 50%;
+      font-weight: bold;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.7);
+    }
+    .btn-action:active {
+      background: #f7931e;
+      color: #000;
+    }
+    #btn-fire {
+      right: 140px;
+      bottom: 45px;
+      width: 90px;
+      height: 90px;
+      background: rgba(200, 40, 40, 0.9);
+      border-color: #ff6b6b;
+      font-size: 18px;
+    }
+    #btn-skill-e {
+      right: 245px;
+      bottom: 55px;
+      width: 65px;
+      height: 65px;
+      background: rgba(0, 180, 216, 0.5);
+      border-color: #00b4d8;
+    }
+    #btn-skill-q {
+      right: 95px;
+      bottom: 150px;
+      width: 65px;
+      height: 65px;
+      background: rgba(255, 170, 0, 0.55);
+      border-color: #ffaa00;
+    }
+    #btn-buy {
+      left: 20px;
+      top: 160px;
+      width: 55px;
+      height: 55px;
+      font-size: 13px;
+      border-radius: 12px;
+      background: #2d3b4e;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+<div id="game-container"></div>
+
+<div id="victory-screen" class="interactive">
+  <div id="victory-text">VICTORY</div>
+  <button onclick="location.reload()" style="margin-top:24px; padding:14px 36px; background:#f0b34b; border:none; font-weight:bold; border-radius:12px; cursor:pointer; color:#0a0f1c;">CHƠI LẠI</button>
+</div>
+
+<div id="hud-overlay">
+  <canvas id="minimap" width="140" height="140"></canvas>
+  <div id="top-match-bar">
+    <span class="team-blue" id="score-blue">0</span>
+    <span style="font-size: 13px; opacity: 0.9; letter-spacing: 1px;">FIRST TO 13</span>
+    <span class="team-red" id="score-red">0</span>
+  </div>
+  <div id="headshot-banner">🎯 HEADSHOT</div>
+  <div id="crosshair"><div id="crosshair-dot"></div></div>
+  <div id="kill-feed"></div>
+  <div id="vital-stats">
+    <div style="color: #a5f0c5;">HP: <span id="hp-val">100</span></div>
+    <div style="color: #d4d9e2; font-size: 14px; margin-top: 4px;">SÚNG: <span id="weapon-name">VANDAL</span></div>
+  </div>
+  <div id="ammo-display"><span id="ammo-clip">30</span> / <span id="ammo-reserve">90</span></div>
+  <div id="spectator-info">👁️ ĐANG XEM: <span id="spec-target-name">ĐỒNG ĐỘI</span></div>
+  <div id="spectator-controls" class="interactive">
+    <button class="spec-btn" id="btn-prev-ally">◀ ĐỒNG ĐỘI TRƯỚC</button>
+    <button class="spec-btn" id="btn-next-ally">ĐỒNG ĐỘI SAU ▶</button>
+  </div>
+  <div id="btn-buy" class="btn-action interactive">SHOP</div>
+  <div id="joystick-zone" class="interactive"><div id="joystick-knob"></div></div>
+  <div id="btn-fire" class="btn-action interactive">BẮN</div>
+  <div id="btn-skill-e" class="btn-action interactive">E</div>
+  <div id="btn-skill-q" class="btn-action interactive">Q</div>
+</div>
+
+<div id="buy-menu" class="interactive">
+  <h3 style="text-align: center; color: #f3b34b; margin-bottom: 6px;">⚡ CỬA HÀNG VŨ KHÍ</h3>
+  <div class="buy-item" onclick="window.game.equipWeapon('CLASSIC')">CLASSIC (Cân bằng)</div>
+  <div class="buy-item" onclick="window.game.equipWeapon('VANDAL')">VANDAL (Bắn nhanh)</div>
+  <div class="buy-item" onclick="window.game.equipWeapon('OPERATOR')">OPERATOR (Sát thương lớn)</div>
+  <button onclick="document.getElementById('buy-menu').style.display='none'" style="margin-top:12px; background:#e15554; color:#fff; border:none; padding:10px; border-radius:8px; font-weight:bold;">ĐÓNG</button>
+</div>
+
+<script>
+  const CONFIG = { PlayerSpeed: 9.8, Gravity: -22, TargetScore: 13 };
+
+  const WEAPONS = {
+    CLASSIC: { name: 'CLASSIC', clip: 15, reserve: 45, rate: 0.2, bodyDmg: 28, headDmg: 150 },
+    VANDAL: { name: 'VANDAL', clip: 30, reserve: 90, rate: 0.1, bodyDmg: 14, headDmg: 150 },
+    OPERATOR: { name: 'OPERATOR', clip: 5, reserve: 15, rate: 1.0, bodyDmg: 140, headDmg: 150 }
+  };
+
+  class SoundEngine {
+    constructor() { this.audioCtx = null; }
+    init() {
+      if(!this.audioCtx) this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if(this.audioCtx.state === 'suspended') this.audioCtx.resume();
+    }
+    playShoot(type='VANDAL') {
+      if(!this.audioCtx) this.init();
+      try {
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+        osc.type = type === 'OPERATOR' ? 'square' : 'sawtooth';
+        osc.frequency.setValueAtTime(type==='OPERATOR'?160:380, this.audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(15, this.audioCtx.currentTime+0.13);
+        gain.gain.setValueAtTime(0.25, this.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime+0.13);
+        osc.connect(gain); gain.connect(this.audioCtx.destination);
+        osc.start(); osc.stop(this.audioCtx.currentTime+0.13);
+      } catch(e){}
+    }
+  }
+
+  class SmokeGrenade {
+    constructor(scene, position) {
+      this.scene = scene;
+      this.mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(5.5, 32, 32),
+        new THREE.MeshStandardMaterial({ color: 0x88ccff, transparent: true, opacity: 0.7, roughness: 1 })
+      );
+      this.mesh.position.copy(position);
+      this.mesh.position.y = 2.2;
+      this.mesh.isSmoke = true;
+      this.scene.add(this.mesh);
+      this.radius = 5.5;
+      this.position = this.mesh.position.clone();
+    }
+    isInsideSmoke(point) {
+      return this.position.distanceTo(point) < this.radius;
+    }
+    remove() {
+      this.scene.remove(this.mesh);
+    }
+  }
+
+  class InputManager {
+    constructor() {
+      this.moveVec = new THREE.Vector2();
+      this.lookVec = new THREE.Vector2();
+      this.isFiring = false;
+      this.keys = {};
+      this.touchLookId = null;
+      this.lastTouchLookPos = new THREE.Vector2();
+      this._initKeyboard();
+      this._initMobileTouch();
+    }
+    update() {
+      let x=0,y=0;
+      if(this.keys['KeyW']||this.keys['ArrowUp']) y+=1;
+      if(this.keys['KeyS']||this.keys['ArrowDown']) y-=1;
+      if(this.keys['KeyA']||this.keys['ArrowLeft']) x-=1;
+      if(this.keys['KeyD']||this.keys['ArrowRight']) x+=1;
+      if(this.touchJoystickActive!==true){
+        this.moveVec.set(x,y);
+        if(this.moveVec.length()>1)this.moveVec.normalize();
+      }
+    }
+    _initKeyboard(){
+      window.addEventListener('keydown',e=>{
+        this.keys[e.code]=true;
+        if(e.code==='KeyB'){let m=document.getElementById('buy-menu');m.style.display=m.style.display==='flex'?'none':'flex';}
+        if(e.code==='KeyE')window.game.useSkill('E');
+        if(e.code==='KeyQ')window.game.useSkill('Q');
+      });
+      window.addEventListener('keyup',e=>this.keys[e.code]=false);
+      window.addEventListener('mousedown',e=>{if(e.button===0)this.isFiring=true; if(document.pointerLockElement!==document.body&&!('ontouchstart' in window))document.body.requestPointerLock();});
+      window.addEventListener('mouseup',e=>{if(e.button===0)this.isFiring=false;});
+      window.addEventListener('mousemove',e=>{if(document.pointerLockElement===document.body){this.lookVec.x-=e.movementX*0.0022;this.lookVec.y-=e.movementY*0.0022;}});
+    }
+    _initMobileTouch(){
+      const joyZone=document.getElementById('joystick-zone'),joyKnob=document.getElementById('joystick-knob');
+      let center=new THREE.Vector2();
+      joyZone.addEventListener('touchstart',e=>{this.touchJoystickActive=true;const r=joyZone.getBoundingClientRect();center.set(r.left+r.width/2,r.top+r.height/2);this._updateJoystick(e.targetTouches[0],center,joyKnob);},{passive:true});
+      joyZone.addEventListener('touchmove',e=>{this._updateJoystick(e.targetTouches[0],center,joyKnob);},{passive:true});
+      joyZone.addEventListener('touchend',()=>{this.touchJoystickActive=false;joyKnob.style.transform='translate(0px,0px)';this.moveVec.set(0,0);});
+      window.addEventListener('touchstart',e=>{for(let t of e.changedTouches){if(t.clientX>window.innerWidth/2&&this.touchLookId===null){this.touchLookId=t.identifier;this.lastTouchLookPos.set(t.clientX,t.clientY);}}},{passive:true});
+      window.addEventListener('touchmove',e=>{if(this.touchLookId===null)return;for(let t of e.changedTouches){if(t.identifier===this.touchLookId){this.lookVec.x-=(t.clientX-this.lastTouchLookPos.x)*0.005;this.lookVec.y-=(t.clientY-this.lastTouchLookPos.y)*0.005;this.lastTouchLookPos.set(t.clientX,t.clientY);}}},{passive:true});
+      window.addEventListener('touchend',e=>{for(let t of e.changedTouches){if(t.identifier===this.touchLookId)this.touchLookId=null;}});
+      document.getElementById('btn-fire').addEventListener('touchstart',e=>{e.preventDefault();this.isFiring=true;});
+      document.getElementById('btn-fire').addEventListener('touchend',e=>{e.preventDefault();this.isFiring=false;});
+      document.getElementById('btn-skill-e').addEventListener('touchstart',e=>{e.preventDefault();window.game.useSkill('E');});
+      document.getElementById('btn-skill-q').addEventListener('touchstart',e=>{e.preventDefault();window.game.useSkill('Q');});
+      document.getElementById('btn-buy').addEventListener('touchstart',e=>{e.preventDefault();let m=document.getElementById('buy-menu');m.style.display=m.style.display==='flex'?'none':'flex';});
+    }
+    _updateJoystick(touch,center,knobEl){
+      const dir=new THREE.Vector2(touch.clientX-center.x,touch.clientY-center.y);
+      const maxDist=45;const dist=Math.min(dir.length(),maxDist);
+      if(dist>0)dir.normalize();
+      knobEl.style.transform=`translate(${dir.x*dist}px,${dir.y*dist}px)`;
+      this.moveVec.set(dir.x*(dist/maxDist),-dir.y*(dist/maxDist));
+    }
+  }
+
+  class AgentBot {
+    constructor(scene,team,spawnPos,name,isAlly=false){
+      this.scene=scene;this.team=team;this.name=name;this.hp=100;this.isDead=false;
+      this.lastShootTime=0;this.recoilZ=0;this.isAlly=isAlly;
+      const color=team==='BLUE'?0x3ce0f0:0xff4655;
+      const group=new THREE.Group();
+      const bodyMat=new THREE.MeshStandardMaterial({color:color,roughness:0.2,metalness:0.45});
+      const headMat=new THREE.MeshStandardMaterial({color:0xf5e6d3,roughness:0.12});
+      const body=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,1.55,12),bodyMat);
+      body.position.y=0.78;body.userData={isBody:true,botRef:this};group.add(body);
+      const head=new THREE.Mesh(new THREE.SphereGeometry(0.32,12,12),headMat);
+      head.position.y=1.72;head.userData={isHead:true,botRef:this};group.add(head);
+      const gunMat=new THREE.MeshStandardMaterial({color:0x1a1a1a,metalness:0.95});
+      this.gunMesh=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.13,0.6),gunMat);
+      this.gunMesh.position.set(0.34,0.98,-0.34);group.add(this.gunMesh);
+      this.mesh=group;this.mesh.position.copy(spawnPos);this.mesh.userData={isBot:true,botRef:this};
+      this.scene.add(this.mesh);this.targetWay=this._getPatrolPoint();
+    }
+    _getPatrolPoint(){return new THREE.Vector3((Math.random()-0.5)*74,0,(Math.random()-0.5)*74);}
+
+    update(dt,allTargets,gameEngine){
+      if(this.isDead)return;
+      let closestEnemy=null,closestDist=38;
+      allTargets.forEach(t=>{
+        if(t.team!==this.team&&!t.isDead){
+          const d=this.mesh.position.distanceTo(t.position);
+          if(d<closestDist&&gameEngine.hasLineOfSight(this.mesh.position,t.position)){
+            closestDist=d;closestEnemy=t;
+          }
+        }
+      });
+      if(this.recoilZ>0){this.recoilZ=Math.max(0,this.recoilZ-dt*2.4);this.gunMesh.position.z=-0.34+this.recoilZ;}
+
+      if(closestEnemy){
+        this.mesh.lookAt(closestEnemy.position.x,this.mesh.position.y,closestEnemy.position.z);
+        const now=performance.now()/1000;
+        // Tất cả bot (cả đồng đội và địch) đều có tốc độ bắn và độ chính xác như nhau
+        if(now-this.lastShootTime>0.12){
+          this.lastShootTime=now;gameEngine.sound.playShoot('VANDAL');
+          this.recoilZ=0.17;this.gunMesh.position.z=-0.34+this.recoilZ;
+          const hs=Math.random()<0.02;
+          closestEnemy.takeDamage(hs?150:15,this.name,gameEngine,hs);
+        }
+      }else{
+        const dir=new THREE.Vector3().subVectors(this.targetWay,this.mesh.position);dir.y=0;
+        if(dir.length()<2.5)this.targetWay=this._getPatrolPoint();
+        else{
+          dir.normalize();const newPos=this.mesh.position.clone().add(dir.clone().multiplyScalar(4.4*dt));
+          if(!gameEngine.checkWallCollision(newPos,0.5))this.mesh.position.copy(newPos);
+          else this.targetWay=this._getPatrolPoint();
+          this.mesh.lookAt(this.targetWay.x,this.mesh.position.y,this.targetWay.z);
+        }
+      }
+    }
+    takeDamage(amount,attackerName,gameEngine,isHeadshot){
+      if(this.isDead)return;this.hp-=amount;
+      this.mesh.children.forEach(c=>{if(c.material)c.material.color.setHex(0xffffff);});
+      setTimeout(()=>{if(!this.isDead){this.mesh.children[0].material.color.setHex(this.team==='BLUE'?0x3ce0f0:0xff4655);this.mesh.children[1].material.color.setHex(0xf5e6d3);}},65);
+      if(this.hp<=0){this.isDead=true;this.scene.remove(this.mesh);gameEngine.registerKill(attackerName,this.name,this.team,isHeadshot);}
+    }
+  }
+
+  class GameEngine {
+    constructor(){
+      this.container=document.getElementById('game-container');
+      this.yaw=0;this.pitch=0;this.playerHp=100;this.isDead=false;this.playerPos=new THREE.Vector3(0,1.6,38);
+      this.scoreBlue=0;this.scoreRed=0;
+      this.currentWeapon=WEAPONS.VANDAL;this.ammoClip=this.currentWeapon.clip;this.ammoReserve=this.currentWeapon.reserve;
+      this.lastFireTime=0;this.recoilAnim=0;
+      this.bots=[];this.obstacles=[];this.smokes=[];
+      this.isSpectating=false;
+      this.spectatorTarget=null;
+      this.spectatorIndex=0;
+      this._initGraphics();this.input=new InputManager();this.sound=new SoundEngine();
+      this._buildValorantMap();this._spawn5v5Match();this._initWeaponModel();
+      this._initSpectatorControls();
+      this.onWindowResize();window.addEventListener('resize',()=>this.onWindowResize());
+      this.clock=new THREE.Clock();this.animate();
+    }
+
+    _initSpectatorControls(){
+      document.getElementById('btn-prev-ally').addEventListener('click',()=>this._switchSpectator(-1));
+      document.getElementById('btn-next-ally').addEventListener('click',()=>this._switchSpectator(1));
+      document.getElementById('btn-prev-ally').addEventListener('touchstart',(e)=>{e.preventDefault();this._switchSpectator(-1);});
+      document.getElementById('btn-next-ally').addEventListener('touchstart',(e)=>{e.preventDefault();this._switchSpectator(1);});
+    }
+
+    _switchSpectator(direction){
+      if(!this.isDead)return;
+      const aliveAllies=this.bots.filter(b=>b.team==='BLUE'&&!b.isDead);
+      if(aliveAllies.length===0)return;
+      this.spectatorIndex=(this.spectatorIndex+direction+aliveAllies.length)%aliveAllies.length;
+      this.spectatorTarget=aliveAllies[this.spectatorIndex];
+      document.getElementById('spec-target-name').innerText=this.spectatorTarget.name;
+    }
+
+    _startSpectating(){
+      if(this.isSpectating)return;
+      this.isSpectating=true;
+      const aliveAllies=this.bots.filter(b=>b.team==='BLUE'&&!b.isDead);
+      if(aliveAllies.length>0){
+        this.spectatorIndex=0;
+        this.spectatorTarget=aliveAllies[0];
+        document.getElementById('spec-target-name').innerText=this.spectatorTarget.name;
+        document.getElementById('spectator-info').style.display='block';
+        document.getElementById('spectator-controls').style.display='flex';
+        document.getElementById('crosshair').style.display='none';
+        document.getElementById('ammo-display').style.display='none';
+        document.getElementById('vital-stats').style.display='none';
+      }
+    }
+
+    _stopSpectating(){
+      this.isSpectating=false;
+      this.spectatorTarget=null;
+      document.getElementById('spectator-info').style.display='none';
+      document.getElementById('spectator-controls').style.display='none';
+      document.getElementById('crosshair').style.display='block';
+      document.getElementById('ammo-display').style.display='block';
+      document.getElementById('vital-stats').style.display='block';
+    }
+
+    _initGraphics(){
+      this.scene=new THREE.Scene();
+      this.scene.background=new THREE.Color(0x1e2b3f);
+      this.scene.fog=new THREE.FogExp2(0x1e2b3f,0.002);
+      this.camera=new THREE.PerspectiveCamera(74,window.innerWidth/window.innerHeight,0.01,1000);
+      this.scene.add(new THREE.AmbientLight(0xfff5e6,0.95));
+      const sun=new THREE.DirectionalLight(0xffeedd,1.35);sun.position.set(50,95,50);this.scene.add(sun);
+      const back=new THREE.DirectionalLight(0x87ceeb,0.6);back.position.set(-45,70,-45);this.scene.add(back);
+      this.renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+      this.renderer.setSize(window.innerWidth,window.innerHeight);
+      this.container.appendChild(this.renderer.domElement);
+    }
+    _buildValorantMap(){
+      const groundMat=new THREE.MeshStandardMaterial({color:0x5a6b7a,roughness:0.65,metalness:0.18});
+      const ground=new THREE.Mesh(new THREE.PlaneGeometry(195,195),groundMat);
+      ground.rotation.x=-Math.PI/2;this.scene.add(ground);
+      for(let i=-85;i<85;i+=11){
+        const line=new THREE.Mesh(new THREE.PlaneGeometry(0.4,195),new THREE.MeshBasicMaterial({color:0xc0a080,transparent:true,opacity:0.22}));
+        line.rotation.x=-Math.PI/2;line.position.set(i,0.02,0);this.scene.add(line);
+      }
+      this._createSiteZone(-44,0.02,-40,30,30,0x3ce0f0);
+      this._createSiteZone(44,0.02,-40,30,30,0xffaa33);
+      this.obstacles=[];
+      this._createObstacle(0,4.8,-90,195,9.5,2.5,0x8b9daa);
+      this._createObstacle(0,4.8,90,195,9.5,2.5,0x8b9daa);
+      this._createObstacle(-90,4.8,0,2.5,9.5,195,0x8b9daa);
+      this._createObstacle(90,4.8,0,2.5,9.5,195,0x8b9daa);
+      this._createObstacle(0,4,2,20,8.5,20,0xb08d6a);
+      this._createObstacle(-40,2.5,-34,8,5,8,0xd9a066);
+      this._createObstacle(40,2.5,-34,9,5,7,0xd9a066);
+      this._createObstacle(-24,3.4,20,6,7,28,0x9aa8b2);
+      this._createObstacle(24,3.4,20,6,7,28,0x9aa8b2);
+      this._createObstacle(-14,2.4,-20,9,5,5,0xc49a6c);
+      this._createObstacle(14,2.4,-20,9,5,5,0xc49a6c);
+    }
+    _createSiteZone(x,y,z,sx,sz,colorHex){
+      const mesh=new THREE.Mesh(new THREE.PlaneGeometry(sx,sz),new THREE.MeshBasicMaterial({color:colorHex,transparent:true,opacity:0.3,side:THREE.DoubleSide}));
+      mesh.position.set(x,y,z);mesh.rotation.x=-Math.PI/2;this.scene.add(mesh);
+    }
+    _createObstacle(x,y,z,sx,sy,sz,colorHex){
+      const mesh=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),new THREE.MeshStandardMaterial({color:colorHex,roughness:0.3,metalness:0.28}));
+      mesh.position.set(x,y,z);this.scene.add(mesh);this.obstacles.push(new THREE.Box3().setFromObject(mesh));
+    }
+    checkWallCollision(pos,radius=0.5){
+      const box=new THREE.Box3(new THREE.Vector3(pos.x-radius,pos.y-1,pos.z-radius),new THREE.Vector3(pos.x+radius,pos.y+1,pos.z+radius));
+      for(let o of this.obstacles)if(o.intersectsBox(box))return true;
+      return false;
+    }
+    hasLineOfSight(from,to){
+      for(let smoke of this.smokes){
+        if(smoke.isInsideSmoke(from) || smoke.isInsideSmoke(to)) return false;
+      }
+      const dir=new THREE.Vector3().subVectors(to,from);const dist=dir.length();dir.normalize();
+      const rc=new THREE.Raycaster(from,dir,0.15,dist-0.4);
+      const hits=rc.intersectObjects(this.scene.children.filter(c=>!c.isSmoke),true);
+      for(let h of hits){
+        if(!h.object.userData.isBot&&!h.object.userData.isBody&&!h.object.userData.isHead)return false;
+      }
+      return true;
+    }
+    _spawn5v5Match(){
+      this.bots.forEach(b=>this.scene.remove(b.mesh));this.bots=[];
+      // 4 đồng đội BLUE
+      for(let i=1;i<=4;i++)this.bots.push(new AgentBot(this.scene,'BLUE',new THREE.Vector3((i-2.5)*7.5,0,39),`ĐỒNG_ĐỘI_${i}`,true));
+      // 5 địch RED
+      for(let i=1;i<=5;i++)this.bots.push(new AgentBot(this.scene,'RED',new THREE.Vector3((i-3)*9.5,0,-44),`ĐỊCH_${i}`,false));
+    }
+    _initWeaponModel(){
+      if(this.weaponGroup)this.camera.remove(this.weaponGroup);
+      this.weaponGroup=new THREE.Group();
+      const body=new THREE.Mesh(new THREE.BoxGeometry(0.11,0.16,0.6),new THREE.MeshStandardMaterial({color:0x2a2a35,metalness:0.92,roughness:0.18}));
+      body.position.set(0.25,-0.27,-0.5);this.weaponGroup.add(body);
+      this.camera.add(this.weaponGroup);this.scene.add(this.camera);
+    }
+    equipWeapon(typeKey){
+      this.currentWeapon=WEAPONS[typeKey];this.ammoClip=this.currentWeapon.clip;this.ammoReserve=this.currentWeapon.reserve;
+      document.getElementById('weapon-name').innerText=this.currentWeapon.name;document.getElementById('buy-menu').style.display='none';
+    }
+    useSkill(type){
+      if(this.isDead)return;
+      if(type==='E'){
+        const fwd=new THREE.Vector3(0,0,-9).applyAxisAngle(new THREE.Vector3(0,1,0),this.yaw);
+        const smokePos=this.playerPos.clone().add(fwd);
+        const smoke=new SmokeGrenade(this.scene,smokePos);
+        this.smokes.push(smoke);
+        setTimeout(()=>{smoke.remove();this.smokes=this.smokes.filter(s=>s!==smoke);},7000);
+      }else if(type==='Q'){
+        const fire=new THREE.Mesh(new THREE.SphereGeometry(1.7,12,12),new THREE.MeshBasicMaterial({color:0xff7700}));
+        const fwd=new THREE.Vector3(0,0,-7).applyAxisAngle(new THREE.Vector3(0,1,0),this.yaw);
+        fire.position.copy(this.playerPos).add(fwd);this.scene.add(fire);
+        this.bots.forEach(b=>{if(!b.isDead&&b.team==='RED'&&b.mesh.position.distanceTo(fire.position)<9)b.takeDamage(70,'PHOENIX',this,false);});
+        setTimeout(()=>this.scene.remove(fire),1500);
+      }
+    }
+    takeDamage(amount,attackerName,engine,isHeadshot){
+      if(this.isDead)return;this.playerHp-=amount;document.getElementById('hp-val').innerText=Math.max(0,this.playerHp);
+      if(this.playerHp<=0){
+        this.isDead=true;
+        this.registerKill(attackerName,'BẠN','BLUE',isHeadshot);
+        this._startSpectating();
+      }
+    }
+    registerKill(killer,victim,victimTeam,isHeadshot){
+      const feed=document.getElementById('kill-feed');const item=document.createElement('div');item.className='feed-item';
+      item.innerText=`${killer} ${isHeadshot?'🎯[HEADSHOT]':'➔'} ${victim}`;feed.appendChild(item);setTimeout(()=>item.remove(),4000);
+      if(isHeadshot&&(killer.includes('BẠN')||killer==='PHOENIX')){const b=document.getElementById('headshot-banner');b.style.opacity='1';b.style.transform='translate(-50%,-50%) scale(1.3)';setTimeout(()=>{b.style.opacity='0';b.style.transform='translate(-50%,-50%) scale(1.0)';},850);}
+      this._checkRoundEnd();
+    }
+    _checkRoundEnd(){
+      const blue=(this.isDead?0:1)+this.bots.filter(b=>b.team==='BLUE'&&!b.isDead).length;
+      const red=this.bots.filter(b=>b.team==='RED'&&!b.isDead).length;
+      if(blue===0){this.scoreRed++;this._startNewRound();}else if(red===0){this.scoreBlue++;this._startNewRound();}
+      document.getElementById('score-blue').innerText=this.scoreBlue;document.getElementById('score-red').innerText=this.scoreRed;
+      if(this.scoreBlue>=CONFIG.TargetScore||this.scoreRed>=CONFIG.TargetScore){
+        document.getElementById('victory-text').innerText=this.scoreBlue>=CONFIG.TargetScore?'CHIẾN THẮNG!':'THẤT BẠI!';
+        document.getElementById('victory-screen').style.display='flex';
+      }
+    }
+    _startNewRound(){
+      setTimeout(()=>{
+        this.smokes.forEach(s=>s.remove());this.smokes=[];
+        this.playerHp=100;this.isDead=false;this.playerPos.set(0,1.6,38);
+        document.getElementById('hp-val').innerText=100;this.ammoClip=this.currentWeapon.clip;
+        this._stopSpectating();
+        this._spawn5v5Match();
+      },1700);
+    }
+    _updatePlayer(dt){
+      if(this.isDead)return;
+      this.input.update();
+      this.yaw=this.input.lookVec.x;this.pitch=this.input.lookVec.y;
+      this.pitch=Math.max(-Math.PI/2.2,Math.min(Math.PI/2.2,this.pitch));
+      this.camera.rotation.set(0,0,0);this.camera.rotateY(this.yaw);this.camera.rotateX(this.pitch);
+      const fwd=new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0),this.yaw);
+      const right=new THREE.Vector3(1,0,0).applyAxisAngle(new THREE.Vector3(0,1,0),this.yaw);
+      const moveX=(fwd.x*this.input.moveVec.y+right.x*this.input.moveVec.x)*CONFIG.PlayerSpeed*dt;
+      const moveZ=(fwd.z*this.input.moveVec.y+right.z*this.input.moveVec.x)*CONFIG.PlayerSpeed*dt;
+      const target=this.playerPos.clone();target.x+=moveX;target.z+=moveZ;
+      if(!this.checkWallCollision(target,0.48))this.playerPos.copy(target);
+      this.camera.position.copy(this.playerPos);
+    }
+    _updateSpectator(){
+      if(!this.isSpectating||!this.spectatorTarget||this.spectatorTarget.isDead){
+        const aliveAllies=this.bots.filter(b=>b.team==='BLUE'&&!b.isDead);
+        if(aliveAllies.length===0){
+          document.getElementById('spectator-info').innerText='👁️ TẤT CẢ ĐỒNG ĐỘI ĐÃ CHẾT';
+          return;
+        }
+        this.spectatorIndex=0;this.spectatorTarget=aliveAllies[0];
+        document.getElementById('spec-target-name').innerText=this.spectatorTarget.name;
+      }
+      const targetPos=this.spectatorTarget.mesh.position.clone();
+      this.camera.position.set(targetPos.x,targetPos.y+1.6,targetPos.z);
+      const lookDir=new THREE.Vector3(0,0,-1).applyQuaternion(this.spectatorTarget.mesh.quaternion);
+      const lookTarget=targetPos.clone().add(lookDir.multiplyScalar(5));
+      this.camera.lookAt(lookTarget.x,targetPos.y+1.2,lookTarget.z);
+    }
+    _checkCombatAndShoot(dt){
+      if(this.isDead)return;
+      const time=performance.now()/1000;
+      const rc=new THREE.Raycaster();rc.setFromCamera(new THREE.Vector2(0,0),this.camera);
+      const hits=rc.intersectObjects(this.scene.children.filter(c=>!c.isSmoke),true);
+      let targetBot=null,isHeadshot=false;
+      if(hits.length>0){
+        const obj=hits[0].object;
+        if(obj.userData&&obj.userData.botRef&&obj.userData.botRef.team==='RED'){
+          targetBot=obj.userData.botRef;
+          if(obj.userData.isHead)isHeadshot=true;
+        }
+      }
+      const shouldShoot=(targetBot||this.input.isFiring)&&this.ammoClip>0;
+      if(shouldShoot&&time-this.lastFireTime>this.currentWeapon.rate){
+        this.ammoClip--;this.sound.playShoot(this.currentWeapon.name);this.lastFireTime=time;this.recoilAnim=0.15;
+        if(targetBot){
+          const dmg=isHeadshot?this.currentWeapon.headDmg:this.currentWeapon.bodyDmg;
+          targetBot.takeDamage(dmg,'BẠN',this,isHeadshot);
+        }
+      }
+      this.recoilAnim=THREE.MathUtils.lerp(this.recoilAnim,0,dt*14);
+      this.weaponGroup.position.z=-0.5+this.recoilAnim;this.weaponGroup.rotation.x=this.recoilAnim*0.6;
+      document.getElementById('ammo-clip').innerText=this.ammoClip;document.getElementById('ammo-reserve').innerText=this.ammoReserve;
+    }
+    _renderMinimap(){
+      const c=document.getElementById('minimap');const ctx=c.getContext('2d');ctx.clearRect(0,0,140,140);
+      const s=140/195;
+      if(!this.isDead){
+        const px=(this.playerPos.x+97.5)*s,pz=(this.playerPos.z+97.5)*s;
+        ctx.fillStyle='#f5b042';ctx.beginPath();ctx.arc(px,pz,5,0,Math.PI*2);ctx.fill();
+      }else if(this.spectatorTarget){
+        const px=(this.spectatorTarget.mesh.position.x+97.5)*s,pz=(this.spectatorTarget.mesh.position.z+97.5)*s;
+        ctx.fillStyle='#00ff00';ctx.beginPath();ctx.arc(px,pz,5,0,Math.PI*2);ctx.fill();
+      }
+      this.bots.forEach(b=>{
+        if(!b.isDead){
+          const bx=(b.mesh.position.x+97.5)*s,bz=(b.mesh.position.z+97.5)*s;
+          ctx.fillStyle=b.team==='BLUE'?'#3ce0f0':'#ff5e6b';
+          ctx.beginPath();ctx.arc(bx,bz,3.5,0,Math.PI*2);ctx.fill();
+        }
+      });
+    }
+    onWindowResize(){this.camera.aspect=window.innerWidth/window.innerHeight;this.camera.updateProjectionMatrix();this.renderer.setSize(window.innerWidth,window.innerHeight);}
+    animate(){
+      requestAnimationFrame(()=>this.animate());const dt=Math.min(this.clock.getDelta(),0.05);
+      if(this.isSpectating){
+        this._updateSpectator();
+      }else{
+        this._updatePlayer(dt);
+      }
+      const allTargets=[
+        {team:'BLUE',position:this.playerPos,isDead:this.isDead,takeDamage:(amt,name,eng,hs)=>this.takeDamage(amt,name,eng,hs)},
+        ...this.bots.map(b=>({team:b.team,position:b.mesh.position,isDead:b.isDead,takeDamage:(amt,name,eng,hs)=>b.takeDamage(amt,name,eng,hs)}))
+      ];
+      this.bots.forEach(b=>b.update(dt,allTargets,this));
+      if(!this.isSpectating)this._checkCombatAndShoot(dt);
+      this._renderMinimap();
+      this.renderer.render(this.scene,this.camera);
+    }
+  }
+
+  window.onload = () => { window.game = new GameEngine(); };
+</script>
+</body>
+</html>
